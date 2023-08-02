@@ -6,6 +6,7 @@ from sklearn.cluster import KMeans
 from sklearn import metrics
 from sklearn.cluster import SpectralClustering
 from prettytable import PrettyTable
+import matplotlib.pyplot as plt
 
 
 def generate_data_bernoulli(n, t, graph, mu, nu, labels):
@@ -115,13 +116,6 @@ def calculate_w(div, method="expvar2"):
             var = numpy.var(div != -1)
             w = numpy.exp(-numpy.square(div) / var)
             w[div == -1] = 0
-        case "inverse":
-            w = 1 / div
-            w[div == -1] = 0
-        case "normalized":
-            d_max = numpy.max(div)
-            w = 1 / (div/d_max)
-            w[div == -1] = 0
         case _:
             w = div
     return w
@@ -230,24 +224,24 @@ def labels_to_clusters(c, labels):
 
 
 def evaluate_clusterings(data, n, t, method):
-    results = numpy.zeros(5)
-    divergences_bernoulli = compute_divergences_bernoulli(data, n, t)
+    results = numpy.zeros(3)
+    # divergences_bernoulli = compute_divergences_bernoulli(data, n, t)
     divergences_markov = compute_divergences_markov(data, n, t)
     # edges = compute_edge_labels(data, n, t)
     # cautious = correlation_clustering_cautious(n, 1 / 3.5, edges)
     # pivot = correlation_clustering_pivot(n, edges)
-    w_b = calculate_w(divergences_bernoulli, method)
+    # w_b = calculate_w(divergences_bernoulli, method)
     w_m = calculate_w(divergences_markov, method)
-    bernoulli = spectral_cluster_from_divergences(w_b, c)
+    # bernoulli = spectral_cluster_from_divergences(w_b, c)
     markov = spectral_cluster_from_divergences(w_m, c)
-    bernoulli_combined = spectral_cluster_combined(data, t, w_b, weights, c)
+    # bernoulli_combined = spectral_cluster_combined(data, t, w_b, weights, c)
     markov_combined = spectral_cluster_combined(data, t, w_m, weights, c)
     spectral_aggregated = spectral_cluster_aggregate(data, c)
-    results[0] = metrics.adjusted_mutual_info_score(labels, bernoulli)
-    results[1] = metrics.adjusted_mutual_info_score(labels, markov)
-    results[2] = metrics.adjusted_mutual_info_score(labels, spectral_aggregated)
-    results[3] = metrics.adjusted_mutual_info_score(labels, bernoulli_combined)
-    results[4] = metrics.adjusted_mutual_info_score(labels, markov_combined)
+    # results[0] = metrics.adjusted_mutual_info_score(labels, bernoulli)
+    results[0] = metrics.adjusted_mutual_info_score(labels, markov)
+    results[1] = metrics.adjusted_mutual_info_score(labels, spectral_aggregated)
+    # results[3] = metrics.adjusted_mutual_info_score(labels, bernoulli_combined)
+    results[2] = metrics.adjusted_mutual_info_score(labels, markov_combined)
     return results
     # results['correlation_cautious'][i] = metrics.adjusted_mutual_info_score(label, cautious)
     # results['correlation_pivot'][i] = metrics.adjusted_mutual_info_score(label, pivot)
@@ -255,39 +249,31 @@ def evaluate_clusterings(data, n, t, method):
 
 if __name__ == '__main__':
     dat_dtype = {
-        'names': ('a', 'b', 'p_in01', 'p_in11', 'p_out01', 'p_out11', 'method', 'bernoulli', 'markov', 'aggregated', 'bernoulli_c', 'markov_c'),
-        'formats': ('i', 'i', 'd', 'd', 'd', 'd', '|U12', 'd', 'd', 'd', 'd', 'd')}
+        'names': ('a', 'b', 'p_in01', 'p_in11', 'p_out01', 'p_out11', 'method', 'aggregated',  'markov', 'markov_c'),
+        'formats': ('i', 'i', 'd', 'd', 'd', 'd', '|U12', 'd', 'd', 'd')}
     methods = ["expvar2"]
-    change = 5
+    change = 1
     c = 2
     n = 100
     t = 500
-    a = 2
-    b = 2
+    a = 6
+    b = 6
     transition_in = [numpy.array([[0.8, 0.2],
-                                 [0.2, 0.8]]),
-                     numpy.array([[0.8, 0.2],
-                                  [0.4, 0.6]]),
-                     numpy.array([[0.8, 0.2],
-                                  [0.4, 0.6]])
+                                 [0.2, 0.8]]) for _ in range(9)
                      ]
-    transition_out = [numpy.array([[0.2, 0.8],
-                                  [0.8, 0.2]]),
-                      numpy.array([[0.6, 0.4],
-                                   [0.8, 0.2]]),
-                      numpy.array([[0.9, 0.1],
-                                   [0.7, 0.3]])
+    transition_out = [numpy.array([[1-i*0.1, i*0.1],
+                                  [i*0.1, 1-i*0.1]]) for i in range(1, 10)
                       ]
     mu = 0.4
     nu = 0.4
     weights = [1, 1, 1]
-    repeat = 1
+    repeat = 20
     results = numpy.zeros(change*len(methods)*len(transition_in), dat_dtype)
 
     for i in range(change):
         p = (math.log(n) / n) * a
         q = (math.log(n) / n) * b
-        scores = numpy.zeros(5)
+        scores = numpy.zeros(3)
         for j in range(len(transition_in)):
             for k in range(len(methods)):
                 for _ in range(repeat):
@@ -297,11 +283,11 @@ if __name__ == '__main__':
                                                                         [item for sublist in clusters for item in sublist])
                     data = generate_data_markov(n, t, interaction_graph, mu, nu, transition_in[j], transition_out[j], labels)
                     scores += evaluate_clusterings(data, n, t, methods[k])
-                results['bernoulli'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[0]/repeat
-                results['markov'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[1]/repeat
-                results['aggregated'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[2]/repeat
-                results['bernoulli_c'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[3] / repeat
-                results['markov_c'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[4] / repeat
+                # results['bernoulli'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[0]/repeat
+                results['markov'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[0]/repeat
+                results['aggregated'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[1]/repeat
+                # results['bernoulli_c'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[3] / repeat
+                results['markov_c'][i*len(transition_in)*len(methods)+j*len(methods)+k] = scores[2] / repeat
                 results['a'][i*len(transition_in)*len(methods)+j*len(methods)+k] = a
                 results['b'][i*len(transition_in)*len(methods)+j*len(methods)+k] = b
                 results['p_in01'][i*len(transition_in)*len(methods)+j*len(methods)+k] = transition_in[j][0, 1]
@@ -317,3 +303,6 @@ if __name__ == '__main__':
         x.add_row(row)
     # x.float_format = ".4"
     print(x)
+
+    plt.plot([i*0.1 for i in range(1, 10)], results['markov'], 'r-', results['markov_c'], 'b-', results['aggregated'], 'k-')
+    plt.show()
