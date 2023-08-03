@@ -70,8 +70,8 @@ def compute_divergences_bernoulli(a, n, t):
 def compute_divergences_markov(a, n, t):
     num_1 = numpy.sum(a, axis=2)
     num_0 = numpy.ones((n, n))*t - num_1
-    num_01 = numpy.sum(numpy.diff(a) == 1)
-    num_11 = numpy.sum(a[numpy.diff(a, append=numpy.zeros((n, n, 1))) == 0])
+    num_01 = numpy.sum(numpy.diff(a) == 1, axis=2)
+    num_11 = numpy.sum(numpy.logical_and(numpy.diff(a, append=numpy.zeros((n, n, 1))) == 0, a == 1), axis=2)
     p_hat_01 = num_01 / num_0
     p_hat_11 = num_11 / num_1
     pi_hat_1 = p_hat_01 / (1 + p_hat_01 - p_hat_11)
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     dat_dtype = {
         'names': ('a', 'b', 'p_in01', 'p_in11', 'p_out01', 'p_out11', 'method', 'aggregated',  'markov', 'markov_c'),
         'formats': ('i', 'i', 'd', 'd', 'd', 'd', '|U12', 'd', 'd', 'd')}
-    methods = ["expvar2"]
+    methods = ["expvar"]
     change = 1
     c = 2
     n = 100
@@ -304,5 +304,7 @@ if __name__ == '__main__':
     # x.float_format = ".4"
     print(x)
 
-    plt.plot([i*0.1 for i in range(1, 10)], results['markov'], 'r-', results['markov_c'], 'b-', results['aggregated'], 'k-')
+    plt.plot([i*0.1 for i in range(1, 10)], results['markov'], 'r-',
+             [i*0.1 for i in range(1, 10)], results['markov_c'], 'b-',
+             [i*0.1 for i in range(1, 10)], results['aggregated'], 'k-')
     plt.show()
