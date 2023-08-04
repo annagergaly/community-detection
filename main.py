@@ -251,7 +251,7 @@ if __name__ == '__main__':
     dat_dtype = {
         'names': ('a', 'b', 'p_in01', 'p_in11', 'p_out01', 'p_out11', 'method', 'aggregated',  'markov', 'markov_c'),
         'formats': ('i', 'i', 'd', 'd', 'd', 'd', '|U12', 'd', 'd', 'd')}
-    methods = ["expvar"]
+    methods = ["expvar2"]
     change = 1
     c = 2
     n = 100
@@ -273,9 +273,9 @@ if __name__ == '__main__':
     for i in range(change):
         p = (math.log(n) / n) * a
         q = (math.log(n) / n) * b
-        scores = numpy.zeros(3)
         for j in range(len(transition_in)):
             for k in range(len(methods)):
+                scores = numpy.zeros(3)
                 for _ in range(repeat):
                     labels = numpy.random.choice(c, n)
                     clusters = labels_to_clusters(c, labels)
